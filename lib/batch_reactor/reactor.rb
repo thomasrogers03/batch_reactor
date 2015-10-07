@@ -6,6 +6,7 @@ module BatchReactor
       @yield_batch_callback = yield_batch_callback
       @front_buffer = []
       @back_buffer = []
+      @stopped_promise = Ione::Promise.new
       super
     end
 
@@ -14,7 +15,7 @@ module BatchReactor
       Thread.start do
         promise.fulfill(self)
 
-        loop do
+        until @stopping
           swap_buffers
 
           if @front_buffer.empty?
@@ -36,14 +37,23 @@ module BatchReactor
             buffer.each { |work| work.promise.fail(error) }
           end
         end
+
+        @stopped_promise.fulfill(self)
       end
       promise.future
     end
 
+    def stop
+      @stopping = true
+      @stopped_promise.future
+    end
+
     def perform_within_batch(&block)
       promise = Ione::Promise.new
-      synchronize do
-        @back_buffer << Work.new(block, promise)
+      if @stopped_promise.future.resolved?
+        promise.fail(StandardError.new('Reactor stopped!'))
+      else
+        synchronize { @back_buffer << Work.new(block, promise) }
       end
       promise.future
     end

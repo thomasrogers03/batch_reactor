@@ -37,6 +37,24 @@ module BatchReactor
       end
     end
 
+    describe '#stop' do
+      before { subject.start.get }
+
+      it 'should return an Ione::Future' do
+        expect(subject.stop).to be_a_kind_of(Ione::Future)
+      end
+
+      it 'should resolve to the reactor instance' do
+        expect(subject.stop.get).to eq(subject)
+      end
+
+      it 'should raise an error when someone attempts to process something' do
+        subject.stop.get
+        future = subject.perform_within_batch { |batch| batch << :item }
+        expect { future.get }.to raise_error(StandardError, 'Reactor stopped!')
+      end
+    end
+
     describe '#perform_within_batch' do
       before { subject.start.get }
 
