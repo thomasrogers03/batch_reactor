@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    proxy_piggy (0.0.1)
+    batch_reactor (0.0.1)
       ione
 
 GEM
@@ -41,7 +41,7 @@ GEM
     notiffany (0.0.8)
       nenv (~> 0.1)
       shellany (~> 0.0)
-    pry (0.10.1)
+    pry (0.10.2)
       coderay (~> 1.1.0)
       method_source (~> 0.8.1)
       slop (~> 3.4)
@@ -78,11 +78,11 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  batch_reactor!
   guard
   guard-bundler
   guard-rspec
   ione
-  proxy_piggy!
   pry
   rdoc
   rspec (~> 3.1.0)

@@ -1,5 +1,5 @@
 Gem::Specification.new do |s|
-  s.name = 'proxy_piggy'
+  s.name = 'batch_reactor'
   s.version = '0.0.1'
   s.license = 'Apache License 2.0'
   s.summary = ''
