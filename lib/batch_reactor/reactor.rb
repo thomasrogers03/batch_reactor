@@ -27,6 +27,10 @@ module BatchReactor
         end
 
         @stopped_promise.fulfill(self)
+
+        # TODO: somehow test this (very hard, since it's a race condition)
+        swap_buffers
+        process_batch
       end
       promise.future
     end
