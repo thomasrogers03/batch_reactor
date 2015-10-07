@@ -23,19 +23,7 @@ module BatchReactor
             next
           end
 
-          buffer = @front_buffer
-          @front_buffer = []
-          batch_future = @yield_batch_callback.call do |batch|
-            buffer.each do |work|
-              work.result = work.proc.call(batch)
-            end
-          end
-          batch_future.on_value do
-            buffer.each { |work| work.promise.fulfill(work.result) }
-          end
-          batch_future.on_failure do |error|
-            buffer.each { |work| work.promise.fail(error) }
-          end
+          process_batch
         end
 
         @stopped_promise.fulfill(self)
@@ -67,6 +55,22 @@ module BatchReactor
         temp_buffer = @front_buffer
         @front_buffer = @back_buffer
         @back_buffer = temp_buffer
+      end
+    end
+
+    def process_batch
+      buffer = @front_buffer
+      @front_buffer = []
+      batch_future = @yield_batch_callback.call do |batch|
+        buffer.each do |work|
+          work.result = work.proc.call(batch)
+        end
+      end
+      batch_future.on_value do
+        buffer.each { |work| work.promise.fulfill(work.result) }
+      end
+      batch_future.on_failure do |error|
+        buffer.each { |work| work.promise.fail(error) }
       end
     end
 
