@@ -22,13 +22,19 @@ module BatchReactor
             next
           end
 
-          @yield_batch_callback.call do |batch|
-            @front_buffer.each do |work|
-              work.proc.call(batch)
-              work.promise.fulfill(nil)
+          buffer = @front_buffer
+          @front_buffer = []
+          batch_future = @yield_batch_callback.call do |batch|
+            buffer.each do |work|
+              work.result = work.proc.call(batch)
             end
-          end.get
-          @front_buffer.clear
+          end
+          batch_future.on_value do
+            buffer.each { |work| work.promise.fulfill(work.result) }
+          end
+          batch_future.on_failure do |error|
+            buffer.each { |work| work.promise.fail(error) }
+          end
         end
       end
       promise.future
@@ -44,7 +50,7 @@ module BatchReactor
 
     private
 
-    Work = Struct.new(:proc, :promise)
+    Work = Struct.new(:proc, :promise, :result)
 
     def swap_buffers
       synchronize do

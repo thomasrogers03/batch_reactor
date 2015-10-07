@@ -4,12 +4,18 @@ module BatchReactor
   describe Reactor do
 
     let(:results) { [] }
+    let(:batch_value) { results }
+    let(:batch_error) { nil }
     let(:batch_proc) do
       ->(&block) do
         promise = Ione::Promise.new
         results.clear
         block.call(results)
-        promise.fulfill(results)
+        if batch_value
+          promise.fulfill(batch_value)
+        else
+          promise.fail(batch_error)
+        end
         promise.future
       end
     end
@@ -50,6 +56,21 @@ module BatchReactor
               subject.perform_with_batch_async { |batch| batch << :item_two }
           ).get
           expect(results).to eq([:item_one, :item_two])
+        end
+      end
+
+      it 'should return a future resolving to the result of the block' do
+        future = subject.perform_with_batch_async { |batch| batch << :item; :result }
+        expect(future.get).to eq(:result)
+      end
+
+      context 'when the batch fails' do
+        let(:batch_value) { nil }
+        let(:batch_error) { StandardError.new('Batch failed!') }
+
+        it 'should return a future resolving to the result of the block' do
+          future = subject.perform_with_batch_async { |batch| batch << :item; :result }
+          expect { future.get }.to raise_error(StandardError, 'Batch failed!')
         end
       end
     end
