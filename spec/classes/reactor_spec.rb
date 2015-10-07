@@ -37,30 +37,30 @@ module BatchReactor
       end
     end
 
-    describe '#perform_with_batch_async' do
+    describe '#perform_within_batch' do
       before { subject.start.get }
 
       it 'should return an Ione::Future' do
-        expect(subject.perform_with_batch_async {}).to be_a_kind_of(Ione::Future)
+        expect(subject.perform_within_batch {}).to be_a_kind_of(Ione::Future)
       end
 
       it 'should yield the batch to the provided block' do
-        subject.perform_with_batch_async { |batch| batch << :item }.get
+        subject.perform_within_batch { |batch| batch << :item }.get
         expect(results).to eq([:item])
       end
 
       context 'with multiple executions' do
         it 'should call the block for each execution' do
           Ione::Future.all(
-              subject.perform_with_batch_async { |batch| batch << :item_one },
-              subject.perform_with_batch_async { |batch| batch << :item_two }
+              subject.perform_within_batch { |batch| batch << :item_one },
+              subject.perform_within_batch { |batch| batch << :item_two }
           ).get
           expect(results).to eq([:item_one, :item_two])
         end
       end
 
       it 'should return a future resolving to the result of the block' do
-        future = subject.perform_with_batch_async { |batch| batch << :item; :result }
+        future = subject.perform_within_batch { |batch| batch << :item; :result }
         expect(future.get).to eq(:result)
       end
 
@@ -69,7 +69,7 @@ module BatchReactor
         let(:batch_error) { StandardError.new('Batch failed!') }
 
         it 'should return a future resolving to the result of the block' do
-          future = subject.perform_with_batch_async { |batch| batch << :item; :result }
+          future = subject.perform_within_batch { |batch| batch << :item; :result }
           expect { future.get }.to raise_error(StandardError, 'Batch failed!')
         end
       end

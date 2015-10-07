@@ -40,7 +40,7 @@ module BatchReactor
       promise.future
     end
 
-    def perform_with_batch_async(&block)
+    def perform_within_batch(&block)
       promise = Ione::Promise.new
       synchronize do
         @back_buffer << Work.new(block, promise)
