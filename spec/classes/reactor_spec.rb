@@ -57,6 +57,7 @@ module BatchReactor
 
     describe '#perform_within_batch' do
       before { subject.start.get }
+      after { subject.stop.get }
 
       it 'should return an Ione::Future' do
         expect(subject.perform_within_batch {}).to be_a_kind_of(Ione::Future)
