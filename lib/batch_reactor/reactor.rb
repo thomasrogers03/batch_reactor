@@ -20,17 +20,11 @@ module BatchReactor
 
         until @stopping
           swap_buffers if needs_work?
-
           next if no_work?
-
           process_batch
         end
 
-        @stopped_promise.fulfill(self)
-
-        # TODO: somehow test this (very hard, since it's a race condition)
-        swap_buffers
-        process_batch
+        shutdown
       end
       promise.future
     end
@@ -92,6 +86,14 @@ module BatchReactor
 
     def handle_failure(buffer, error)
       buffer.each { |work| work.promise.fail(error) }
+    end
+
+    def shutdown
+      @stopped_promise.fulfill(self)
+
+      # TODO: somehow test this (very hard, since it's a race condition)
+      swap_buffers
+      process_batch
     end
 
   end
