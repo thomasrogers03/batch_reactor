@@ -34,7 +34,7 @@ module BatchReactor
       end
 
       context 'with different options' do
-        let(:options) { {work_wait_time: 1} }
+        let(:options) { {no_work_backoff: 1} }
 
         it 'should allow the sleep time to be overridden' do
           expect(subject).to receive(:sleep).with(1).at_least :once
