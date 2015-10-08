@@ -73,17 +73,25 @@ module BatchReactor
 
     def process_batch
       buffer = @front_buffer.slice!(0...@max_batch_size)
-      batch_future = @yield_batch_callback.call do |batch|
-        buffer.each do |work|
-          work.result = work.proc.call(batch)
-        end
-      end
-      batch_future.on_value do
-        buffer.each { |work| work.promise.fulfill(work.result) }
-      end
-      batch_future.on_failure do |error|
-        buffer.each { |work| work.promise.fail(error) }
-      end
+      batch_future = create_batch(buffer)
+      batch_future.on_value { handle_success(buffer) }
+      batch_future.on_failure { |error| handle_failure(buffer, error) }
+    end
+
+    def create_batch(buffer)
+      @yield_batch_callback.call { |batch| perform_work(batch, buffer) }
+    end
+
+    def perform_work(batch, buffer)
+      buffer.each { |work| work.result = work.proc.call(batch) }
+    end
+
+    def handle_success(buffer)
+      buffer.each { |work| work.promise.fulfill(work.result) }
+    end
+
+    def handle_failure(buffer, error)
+      buffer.each { |work| work.promise.fail(error) }
     end
 
   end
