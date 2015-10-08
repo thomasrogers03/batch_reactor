@@ -27,6 +27,22 @@ module BatchReactor
 
     subject { Reactor.new(options, &batch_proc) }
 
+    describe 'processing thread' do
+      it 'should sleep for 100 ms when there is no work' do
+        expect(subject).to receive(:sleep).with(0.1).at_least :once
+        subject.start.get.stop.get
+      end
+
+      context 'with different options' do
+        let(:options) { {work_wait_time: 1} }
+
+        it 'should allow the sleep time to be overridden' do
+          expect(subject).to receive(:sleep).with(1).at_least :once
+          subject.start.get.stop.get
+        end
+      end
+    end
+
     describe '#start' do
       it 'should return an Ione::Future' do
         expect(subject.start).to be_a_kind_of(Ione::Future)

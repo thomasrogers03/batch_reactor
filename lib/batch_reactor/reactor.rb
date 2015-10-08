@@ -8,6 +8,7 @@ module BatchReactor
       @back_buffer = []
       @stopped_promise = Ione::Promise.new
       @max_batch_size = options.fetch(:max_batch_size) { 100 }
+      @work_wait_time = options.fetch(:work_wait_time) { 0.1 }
       super()
     end
 
@@ -20,7 +21,7 @@ module BatchReactor
           swap_buffers if @front_buffer.empty?
 
           if @front_buffer.empty?
-            sleep 0.1
+            sleep @work_wait_time
             next
           end
 
