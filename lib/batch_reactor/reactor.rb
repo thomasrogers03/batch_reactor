@@ -1,6 +1,7 @@
 module BatchReactor
   class Reactor
     include MonitorMixin
+    extend Forwardable
 
     def initialize(options, &yield_batch_callback)
       @yield_batch_callback = yield_batch_callback
@@ -18,12 +19,9 @@ module BatchReactor
         promise.fulfill(self)
 
         until @stopping
-          swap_buffers if @front_buffer.empty?
+          swap_buffers if needs_work?
 
-          if @front_buffer.empty?
-            sleep @no_work_backoff
-            next
-          end
+          next if no_work?
 
           process_batch
         end
@@ -54,6 +52,8 @@ module BatchReactor
 
     private
 
+    def_delegator :@front_buffer, :empty?, :needs_work?
+
     Work = Struct.new(:proc, :promise, :result)
 
     def swap_buffers
@@ -61,6 +61,13 @@ module BatchReactor
         temp_buffer = @front_buffer
         @front_buffer = @back_buffer
         @back_buffer = temp_buffer
+      end
+    end
+
+    def no_work?
+      if @front_buffer.empty?
+        sleep @no_work_backoff
+        true
       end
     end
 
