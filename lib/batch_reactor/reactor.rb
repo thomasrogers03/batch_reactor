@@ -2,12 +2,13 @@ module BatchReactor
   class Reactor
     include MonitorMixin
 
-    def initialize(&yield_batch_callback)
+    def initialize(options, &yield_batch_callback)
       @yield_batch_callback = yield_batch_callback
       @front_buffer = []
       @back_buffer = []
       @stopped_promise = Ione::Promise.new
-      super
+      @max_batch_size = options.fetch(:max_batch_size) { 100 }
+      super()
     end
 
     def start
@@ -16,7 +17,7 @@ module BatchReactor
         promise.fulfill(self)
 
         until @stopping
-          swap_buffers
+          swap_buffers if @front_buffer.empty?
 
           if @front_buffer.empty?
             sleep 0.1
@@ -63,8 +64,7 @@ module BatchReactor
     end
 
     def process_batch
-      buffer = @front_buffer
-      @front_buffer = []
+      buffer = @front_buffer.slice!(0...@max_batch_size)
       batch_future = @yield_batch_callback.call do |batch|
         buffer.each do |work|
           work.result = work.proc.call(batch)

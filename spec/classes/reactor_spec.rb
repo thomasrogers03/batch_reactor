@@ -3,14 +3,18 @@ require 'rspec'
 module BatchReactor
   describe Reactor do
 
-    let(:results) { [] }
-    let(:batch_value) { results }
+    MockBatch = Struct.new(:results)
+
+    let(:result_batches) { [] }
+    let(:batch) { MockBatch.new }
+    let(:batch_value) { batch.results }
     let(:batch_error) { nil }
     let(:batch_proc) do
       ->(&block) do
         promise = Ione::Promise.new
-        results.clear
-        block.call(results)
+        batch.results = []
+        block.call(batch.results)
+        result_batches << batch.results
         if batch_value
           promise.fulfill(batch_value)
         else
@@ -19,8 +23,9 @@ module BatchReactor
         promise.future
       end
     end
+    let(:options) { {} }
 
-    subject { Reactor.new(&batch_proc) }
+    subject { Reactor.new(options, &batch_proc) }
 
     describe '#start' do
       it 'should return an Ione::Future' do
@@ -65,7 +70,7 @@ module BatchReactor
 
       it 'should yield the batch to the provided block' do
         subject.perform_within_batch { |batch| batch << :item }.get
-        expect(results).to eq([:item])
+        expect(batch.results).to eq([:item])
       end
 
       context 'with multiple executions' do
@@ -74,7 +79,7 @@ module BatchReactor
               subject.perform_within_batch { |batch| batch << :item_one },
               subject.perform_within_batch { |batch| batch << :item_two }
           ).get
-          expect(results).to eq([:item_one, :item_two])
+          expect(batch.results).to eq([:item_one, :item_two])
         end
       end
 
@@ -90,6 +95,28 @@ module BatchReactor
         it 'should return a future resolving to the result of the block' do
           future = subject.perform_within_batch { |batch| batch << :item; :result }
           expect { future.get }.to raise_error(StandardError, 'Batch failed!')
+        end
+      end
+
+      context 'with many items enqueued' do
+        it 'should distribute no more than 100 items across multiple batches' do
+          futures = 1000.times.map { subject.perform_within_batch { |batch| batch << :item } }
+          Ione::Future.all(futures).get
+          subject.stop.get
+          big_batch = result_batches.find { |batch| batch.size > 100 }
+          expect(big_batch).to be_nil
+        end
+
+        context 'with a different batch size' do
+          let(:options) { {max_batch_size: 10} }
+
+          it 'should distribute no more than the specified number of items across multiple batches' do
+            futures = 100.times.map { subject.perform_within_batch { |batch| batch << :item } }
+            Ione::Future.all(futures).get
+            subject.stop.get
+            big_batch = result_batches.find { |batch| batch.size > 10 }
+            expect(big_batch).to be_nil
+          end
         end
       end
     end
