@@ -21,13 +21,14 @@ module BatchReactor
       Thread.start do
         @started_promise.fulfill(self)
 
+        last_batch_future = Ione::Future.resolved(nil)
         until @stopping
           swap_buffers if needs_work?
           next if no_work?
-          process_batch
+          last_batch_future = process_batch
         end
 
-        shutdown
+        last_batch_future.on_complete { |_, _| shutdown }
       end
       @started_promise.future
     end
@@ -74,6 +75,7 @@ module BatchReactor
       batch_future.on_complete do |_, error|
         error ? handle_failure(buffer, error) : handle_success(buffer)
       end
+      batch_future
     end
 
     def create_batch(buffer)
@@ -95,11 +97,16 @@ module BatchReactor
     def shutdown
       @stopping_promise.fulfill(self)
 
-      process_batch until @front_buffer.empty?
+      futures = []
+      finish_remaining_work(futures)
       swap_buffers
-      process_batch until @front_buffer.empty?
+      finish_remaining_work(futures)
 
-      @stopped_promise.fulfill(self)
+      Ione::Future.all(futures).on_complete { |_, _| @stopped_promise.fulfill(self) }
+    end
+
+    def finish_remaining_work(futures)
+      futures << process_batch until @front_buffer.empty?
     end
 
   end
