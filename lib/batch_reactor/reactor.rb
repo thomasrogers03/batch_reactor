@@ -7,6 +7,7 @@ module BatchReactor
       @yield_batch_callback = yield_batch_callback
       @front_buffer = []
       @back_buffer = []
+      @stopping_promise = Ione::Promise.new
       @stopped_promise = Ione::Promise.new
       @max_batch_size = options.fetch(:max_batch_size) { 100 }
       @no_work_backoff = options.fetch(:no_work_backoff) { 0.1 }
@@ -38,7 +39,7 @@ module BatchReactor
 
     def perform_within_batch(&block)
       promise = Ione::Promise.new
-      if @stopped_promise.future.resolved?
+      if @stopping_promise.future.resolved?
         promise.fail(StandardError.new('Reactor stopped!'))
       else
         synchronize { @back_buffer << Work.new(block, promise) }
@@ -91,11 +92,13 @@ module BatchReactor
     end
 
     def shutdown
-      @stopped_promise.fulfill(self)
+      @stopping_promise.fulfill(self)
 
       # TODO: somehow test this (very hard, since it's a race condition)
       swap_buffers
       process_batch
+
+      @stopped_promise.fulfill(self)
     end
 
   end
