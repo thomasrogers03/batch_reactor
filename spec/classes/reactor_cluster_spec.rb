@@ -159,9 +159,7 @@ module BatchReactor
     end
 
     def mock_future(value, error = nil)
-      promise = Ione::Promise.new
-      error ? promise.fail(error) : promise.fulfill(value)
-      promise.future
+      error ? Ione::Future.failed(error) : Ione::Future.resolved(value)
     end
 
   end
