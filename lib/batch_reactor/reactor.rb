@@ -95,6 +95,8 @@ module BatchReactor
       @stopping_promise.fulfill(self)
 
       process_batch until @front_buffer.empty?
+      swap_buffers
+      process_batch until @front_buffer.empty?
 
       @stopped_promise.fulfill(self)
     end

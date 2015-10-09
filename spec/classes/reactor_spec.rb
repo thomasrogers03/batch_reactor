@@ -109,6 +109,42 @@ module BatchReactor
           end
 
           context 'with multiple batches left' do
+            let(:extra_batch_count) { 1 }
+
+            it 'should finish processing everything in that batch' do
+              expect(state[:clean_shutdown]).to eq(true)
+            end
+          end
+
+        end
+
+        context 'when remaining work is queued just before shutting down' do
+          let(:options) { {max_batch_size: 1} }
+          let(:state) { {clean_shutdown: false} }
+          let(:extra_batch_count) { 0 }
+
+          before do
+            waiting = true
+            state[:clean_shutdown] = false
+
+            started = false
+            subject.perform_within_batch { started = true; sleep 0.1 while waiting }
+            sleep 0.1 until started
+            extra_batch_count.times { subject.perform_within_batch {} }
+            subject.perform_within_batch { state[:clean_shutdown] = true }
+            stopped_future = subject.stop
+            #noinspection RubyUnusedLocalVariable
+            waiting = false
+            stopped_future.get
+          end
+
+          it 'should finish processing everything in that batch' do
+            expect(state[:clean_shutdown]).to eq(true)
+          end
+
+          context 'with multiple batches left' do
+            let(:extra_batch_count) { 1 }
+
             it 'should finish processing everything in that batch' do
               expect(state[:clean_shutdown]).to eq(true)
             end
