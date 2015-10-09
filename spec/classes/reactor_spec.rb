@@ -11,16 +11,10 @@ module BatchReactor
     let(:batch_error) { nil }
     let(:batch_proc) do
       ->(&block) do
-        promise = Ione::Promise.new
         batch.results = []
         block.call(batch.results)
         result_batches << batch.results
-        if batch_value
-          promise.fulfill(batch_value)
-        else
-          promise.fail(batch_error)
-        end
-        promise.future
+        batch_error ? Ione::Future.failed(batch_error) : Ione::Future.resolved(batch_value)
       end
     end
     let(:options) { {} }
