@@ -82,6 +82,40 @@ module BatchReactor
         future = subject.perform_within_batch { |batch| batch << :item }
         expect { future.get }.to raise_error(StandardError, 'Reactor stopped!')
       end
+
+      describe 'clean shutdown' do
+        context 'when there is remaining work in the processing buffer' do
+          let(:options) { {max_batch_size: 1} }
+          let(:state) { {clean_shutdown: false} }
+          let(:extra_batch_count) { 0 }
+
+          before do
+            waiting = true
+            state[:clean_shutdown] = false
+
+            started = false
+            subject.perform_within_batch { started = true; sleep 0.1 while waiting }
+            extra_batch_count.times { subject.perform_within_batch {} }
+            subject.perform_within_batch { state[:clean_shutdown] = true }
+            sleep 0.1 until started
+            stopped_future = subject.stop
+            #noinspection RubyUnusedLocalVariable
+            waiting = false
+            stopped_future.get
+          end
+
+          it 'should finish processing everything in that batch' do
+            expect(state[:clean_shutdown]).to eq(true)
+          end
+
+          context 'with multiple batches left' do
+            it 'should finish processing everything in that batch' do
+              expect(state[:clean_shutdown]).to eq(true)
+            end
+          end
+
+        end
+      end
     end
 
     describe '#perform_within_batch' do

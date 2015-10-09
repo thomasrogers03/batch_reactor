@@ -94,9 +94,7 @@ module BatchReactor
     def shutdown
       @stopping_promise.fulfill(self)
 
-      # TODO: somehow test this (very hard, since it's a race condition)
-      swap_buffers
-      process_batch
+      process_batch until @front_buffer.empty?
 
       @stopped_promise.fulfill(self)
     end
