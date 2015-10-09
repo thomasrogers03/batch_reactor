@@ -56,6 +56,14 @@ module BatchReactor
         allow(Thread).to receive(:start)
         expect(subject.start.resolved?).to eq(false)
       end
+
+      context 'when called twice' do
+        it 'should only start the reactor thread once' do
+          expect(Thread).to receive(:start).once.and_call_original
+          subject.start.get
+          subject.start.get
+        end
+      end
     end
 
     describe '#stop' do

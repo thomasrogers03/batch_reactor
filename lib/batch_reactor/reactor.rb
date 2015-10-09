@@ -14,9 +14,11 @@ module BatchReactor
     end
 
     def start
-      promise = Ione::Promise.new
+      return @started_promise.future if @started_promise
+
+      @started_promise = Ione::Promise.new
       Thread.start do
-        promise.fulfill(self)
+        @started_promise.fulfill(self)
 
         until @stopping
           swap_buffers if needs_work?
@@ -26,7 +28,7 @@ module BatchReactor
 
         shutdown
       end
-      promise.future
+      @started_promise.future
     end
 
     def stop
