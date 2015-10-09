@@ -71,8 +71,9 @@ module BatchReactor
     def process_batch
       buffer = @front_buffer.slice!(0...@max_batch_size)
       batch_future = create_batch(buffer)
-      batch_future.on_value { handle_success(buffer) }
-      batch_future.on_failure { |error| handle_failure(buffer, error) }
+      batch_future.on_complete do |_, error|
+        error ? handle_failure(buffer, error) : handle_success(buffer)
+      end
     end
 
     def create_batch(buffer)
