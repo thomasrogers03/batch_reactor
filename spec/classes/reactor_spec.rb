@@ -176,11 +176,46 @@ module BatchReactor
         expect(future.get).to eq(:result)
       end
 
+      context 'when the result responds to #on_complete (ie is a future, itself)' do
+        let(:result_value) { 5 }
+        let(:result_error) { nil }
+        let(:result_future) do
+          double(:future).tap do |future|
+            allow(future).to receive(:on_complete) do |&block|
+              block.call(result_value, result_error)
+            end
+          end
+        end
+
+        it 'should return a future resolving to the underlying result' do
+          future = subject.perform_within_batch { result_future }
+          expect(future.get).to eq(5)
+        end
+
+        context 'with a different value' do
+          let(:result_value) { 51 }
+
+          it 'should return a future resolving to the underlying result' do
+            future = subject.perform_within_batch { result_future }
+            expect(future.get).to eq(51)
+          end
+        end
+
+        context 'with an error' do
+          let(:result_error) { StandardError.new('Item in batch failed!') }
+
+          it 'should raise an error on the resolved future' do
+            future = subject.perform_within_batch { result_future }
+            expect { future.get }.to raise_error(StandardError, 'Item in batch failed!')
+          end
+        end
+      end
+
       context 'when the batch fails' do
         let(:batch_value) { nil }
         let(:batch_error) { StandardError.new('Batch failed!') }
 
-        it 'should return a future resolving to the result of the block' do
+        it 'should raise an error on the resolved future' do
           future = subject.perform_within_batch { |batch| batch << :item; :result }
           expect { future.get }.to raise_error(StandardError, 'Batch failed!')
         end
