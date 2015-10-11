@@ -90,16 +90,16 @@ module BatchReactor
       buffer.each do |work|
         result = work.result
         if result.respond_to?(:on_complete)
-          result.on_complete do |value, error|
-            if error
-              work.promise.fail(error)
-            else
-              work.promise.fulfill(value)
-            end
-          end
+          handle_result_future(result, work)
         else
           work.promise.fulfill(result)
         end
+      end
+    end
+
+    def handle_result_future(result, work)
+      result.on_complete do |value, error|
+        error ? work.promise.fail(error) : work.promise.fulfill(value)
       end
     end
 
