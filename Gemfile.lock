@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    batch_reactor (0.0.1)
+    batch_reactor (0.0.2)
       ione (~> 1.2)
 
 GEM
