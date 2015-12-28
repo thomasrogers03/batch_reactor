@@ -4,7 +4,7 @@ gemspec
 
 group :development do
   gem 'rdoc'
-  gem 'ione'
+  gem 'ione', require: false
 end
 
 group :test do
