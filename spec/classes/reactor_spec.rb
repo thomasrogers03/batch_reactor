@@ -14,7 +14,7 @@ module BatchReactor
         batch.results = []
         block.call(batch.results)
         result_batches << batch.results
-        batch_error ? Ione::Future.failed(batch_error) : Ione::Future.resolved(batch_value)
+        batch_error ? ThomasUtils::Future.error(batch_error) : ThomasUtils::Future.value(batch_value)
       end
     end
     let(:options) { {} }
@@ -38,8 +38,8 @@ module BatchReactor
     end
 
     describe '#start' do
-      it 'should return an Ione::Future' do
-        expect(subject.start).to be_a_kind_of(Ione::Future)
+      it 'should return a ThomasUtils::Observation' do
+        expect(subject.start).to be_a_kind_of(ThomasUtils::Observation)
       end
 
       it 'should resolve to the reactor instance' do
@@ -48,7 +48,7 @@ module BatchReactor
 
       it 'should not resolve until the start thread is running' do
         allow(Thread).to receive(:start)
-        expect(subject.start.resolved?).to eq(false)
+        expect(subject.start.resolved_at).to be_nil
       end
 
       context 'when called twice' do
@@ -63,8 +63,8 @@ module BatchReactor
     describe '#stop' do
       before { subject.start.get }
 
-      it 'should return an Ione::Future' do
-        expect(subject.stop).to be_a_kind_of(Ione::Future)
+      it 'should return a ThomasUtils::Observation' do
+        expect(subject.stop).to be_a_kind_of(ThomasUtils::Observation)
       end
 
       it 'should resolve to the reactor instance' do
@@ -152,8 +152,8 @@ module BatchReactor
       before { subject.start.get }
       after { subject.stop.get }
 
-      it 'should return an Ione::Future' do
-        expect(subject.perform_within_batch {}).to be_a_kind_of(Ione::Future)
+      it 'should return a ThomasUtils::Observation' do
+        expect(subject.perform_within_batch {}).to be_a_kind_of(ThomasUtils::Observation)
       end
 
       it 'should yield the batch to the provided block' do
@@ -163,10 +163,10 @@ module BatchReactor
 
       context 'with multiple executions' do
         it 'should call the block for each execution' do
-          Ione::Future.all(
-              subject.perform_within_batch { |batch| batch << :item_one },
-              subject.perform_within_batch { |batch| batch << :item_two }
-          ).get
+          ThomasUtils::Future.all([
+                                      subject.perform_within_batch { |batch| batch << :item_one },
+                                      subject.perform_within_batch { |batch| batch << :item_two }
+                                  ]).get
           expect(batch.results).to eq([:item_one, :item_two])
         end
       end
@@ -224,7 +224,7 @@ module BatchReactor
       context 'with many items enqueued' do
         it 'should distribute no more than 100 items across multiple batches' do
           futures = 1000.times.map { subject.perform_within_batch { |batch| batch << :item } }
-          Ione::Future.all(futures).get
+          ThomasUtils::Future.all(futures).get
           subject.stop.get
           big_batch = result_batches.find { |batch| batch.size > 100 }
           expect(big_batch).to be_nil
@@ -235,7 +235,7 @@ module BatchReactor
 
           it 'should distribute no more than the specified number of items across multiple batches' do
             futures = 100.times.map { subject.perform_within_batch { |batch| batch << :item } }
-            Ione::Future.all(futures).get
+            ThomasUtils::Future.all(futures).get
             subject.stop.get
             big_batch = result_batches.find { |batch| batch.size > 10 }
             expect(big_batch).to be_nil

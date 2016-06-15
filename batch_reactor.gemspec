@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'batch_reactor'
-  s.version = '0.0.2'
+  s.version = '0.1.0'
   s.license = 'Apache License 2.0'
   s.summary = 'A reactor pattern batching system for Ruby'
   s.description = %q{A reactor pattern batching system for Ruby.
@@ -11,6 +11,5 @@ Also adds simple but powerful work partitioning behaviour}
   s.files = Dir['{lib}/**/*.rb', 'bin/*', 'LICENSE.txt', '*.md']
   s.require_path = 'lib'
   s.homepage = 'https://www.github.com/thomasrogers03/batch_reactor'
-  s.add_runtime_dependency 'ione', '~> 1.2'
   s.add_runtime_dependency 'thomas_utils', '~> 0.2.4'
 end

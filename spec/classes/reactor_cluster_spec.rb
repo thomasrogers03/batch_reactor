@@ -159,7 +159,7 @@ module BatchReactor
     end
 
     def mock_future(value, error = nil)
-      error ? Ione::Future.failed(error) : Ione::Future.resolved(value)
+      error ? ThomasUtils::Future.error(error) : ThomasUtils::Future.value(value)
     end
 
   end

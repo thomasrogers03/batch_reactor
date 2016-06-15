@@ -13,12 +13,12 @@ module BatchReactor
 
     def start
       futures = @reactors.map(&:start)
-      Ione::Future.all(futures)
+      ThomasUtils::Future.all(futures)
     end
 
     def stop
       futures = @reactors.map(&:stop)
-      Ione::Future.all(futures)
+      ThomasUtils::Future.all(futures)
     end
 
     def perform_within_batch(key, &block)

@@ -9,8 +9,7 @@ GIT
 PATH
   remote: .
   specs:
-    batch_reactor (0.0.2)
-      ione (~> 1.2)
+    batch_reactor (0.1.0)
       thomas_utils (~> 0.2.4)
 
 GEM
@@ -40,7 +39,6 @@ GEM
       guard (~> 2.1)
       guard-compat (~> 1.1)
       rspec (>= 2.99.0, < 4.0)
-    ione (1.2.1)
     json (1.8.3)
     listen (3.0.3)
       rb-fsevent (>= 0.9.3)
@@ -93,7 +91,6 @@ DEPENDENCIES
   guard
   guard-bundler
   guard-rspec
-  ione
   pry
   rdoc
   rspec (~> 3.1.0)

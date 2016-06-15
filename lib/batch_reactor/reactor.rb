@@ -7,21 +7,21 @@ module BatchReactor
       @yield_batch_callback = yield_batch_callback
       @front_buffer = []
       @back_buffer = []
-      @stopping_promise = Ione::Promise.new
-      @stopped_promise = Ione::Promise.new
+      @stopping_promise = Concurrent::IVar.new
+      @stopped_promise = Concurrent::IVar.new
       @max_batch_size = options.fetch(:max_batch_size) { 100 }
       @no_work_backoff = options.fetch(:no_work_backoff) { 0.1 }
       super()
     end
 
     def start
-      return @started_promise.future if @started_promise
+      return make_future(@started_promise) if @started_promise
 
-      @started_promise = Ione::Promise.new
+      @started_promise = Concurrent::IVar.new
       Thread.start do
-        @started_promise.fulfill(self)
+        @started_promise.set(self)
 
-        last_batch_future = Ione::Future.resolved(nil)
+        last_batch_future = ThomasUtils::Future.none
         until @stopping
           swap_buffers if needs_work?
           next if no_work?
@@ -30,22 +30,22 @@ module BatchReactor
 
         last_batch_future.on_complete { |_, _| shutdown }
       end
-      @started_promise.future
+      make_future(@started_promise)
     end
 
     def stop
       @stopping = true
-      @stopped_promise.future
+      make_future(@stopped_promise)
     end
 
     def perform_within_batch(&block)
-      promise = Ione::Promise.new
-      if @stopping_promise.future.resolved?
+      promise = Concurrent::IVar.new
+      if @stopping_promise.fulfilled?
         promise.fail(StandardError.new('Reactor stopped!'))
       else
         synchronize { @back_buffer << Work.new(block, promise) }
       end
-      promise.future
+      make_future(promise)
     end
 
     private
@@ -92,14 +92,14 @@ module BatchReactor
         if result.respond_to?(:on_complete)
           handle_result_future(result, work)
         else
-          work.promise.fulfill(result)
+          work.promise.set(result)
         end
       end
     end
 
     def handle_result_future(result, work)
       result.on_complete do |value, error|
-        error ? work.promise.fail(error) : work.promise.fulfill(value)
+        error ? work.promise.fail(error) : work.promise.set(value)
       end
     end
 
@@ -108,18 +108,26 @@ module BatchReactor
     end
 
     def shutdown
-      @stopping_promise.fulfill(self)
+      @stopping_promise.set(self)
 
       futures = []
       finish_remaining_work(futures)
       swap_buffers
       finish_remaining_work(futures)
 
-      Ione::Future.all(futures).on_complete { |_, _| @stopped_promise.fulfill(self) }
+      if futures.any?
+        ThomasUtils::Future.all(futures).on_complete { |_, _| @stopped_promise.set(self) }
+      else
+        @stopped_promise.set(self)
+      end
     end
 
     def finish_remaining_work(futures)
       futures << process_batch until @front_buffer.empty?
+    end
+
+    def make_future(promise)
+      ThomasUtils::Observation.new(ThomasUtils::Future::IMMEDIATE_EXECUTOR, promise)
     end
 
   end
