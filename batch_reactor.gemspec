@@ -12,4 +12,5 @@ Also adds simple but powerful work partitioning behaviour}
   s.require_path = 'lib'
   s.homepage = 'https://www.github.com/thomasrogers03/batch_reactor'
   s.add_runtime_dependency 'ione', '~> 1.2'
+  s.add_runtime_dependency 'thomas_utils', '~> 0.2.4'
 end

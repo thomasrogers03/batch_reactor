@@ -5,6 +5,7 @@ gemspec
 group :development do
   gem 'rdoc'
   gem 'ione', require: false
+  gem 'thomas_utils', github: 'thomasrogers03/thomas_utils', require: false
 end
 
 group :test do
