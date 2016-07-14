@@ -47,12 +47,12 @@ module BatchReactor
       elsif @max_buffer_size && @back_buffer.size >= @max_buffer_size
         if @buffer_overflow_handler == :wait
           sleep 0.3 while @back_buffer.size >= @max_buffer_size
-          synchronize { @back_buffer << Work.new(block, promise) }
+          append_to_buffer(block, promise)
         else
           promise.fail(StandardError.new('Buffer overflow!'))
         end
       else
-        synchronize { @back_buffer << Work.new(block, promise) }
+        append_to_buffer(block, promise)
       end
       make_future(promise)
     end
@@ -62,6 +62,10 @@ module BatchReactor
     def_delegator :@front_buffer, :empty?, :needs_work?
 
     Work = Struct.new(:proc, :promise, :result)
+
+    def append_to_buffer(block, promise)
+      synchronize { @back_buffer << Work.new(block, promise) }
+    end
 
     def swap_buffers
       synchronize do
