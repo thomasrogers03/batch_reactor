@@ -171,11 +171,35 @@ module BatchReactor
         end
         let(:options) { {max_buffer_size: 1} }
 
-        it 'should return a future resolving to a failure' do
+        before do
           subject.perform_within_batch { |batch| batch << :item }
+        end
+
+        it 'should return a future resolving to a failure' do
           future = subject.perform_within_batch { |batch| batch << :item }
-          batch_promise.set('OK')
           expect { future.get }.to raise_error(StandardError, 'Buffer overflow!')
+          batch_promise.set('OK')
+        end
+
+        context 'when specified to wait, instead of erroring out' do
+          let(:options) { {max_buffer_size: 1, buffer_overflow_handler: :wait} }
+
+          it 'should wait until the buffer is ready again' do
+            expect(subject).to receive(:sleep).with(0.3) do
+              allow(subject).to receive(:sleep)
+              batch_promise.set('OK')
+              nil
+            end
+            subject.perform_within_batch { |batch| batch << :item }.get
+          end
+
+          it 'should return a future resolving to the result of the block' do
+            allow(subject).to receive(:sleep).with(0.3) do
+              batch_promise.set('OK')
+            end
+            future = subject.perform_within_batch { |batch| batch << :item; :result }
+            expect(future.get).to eq(:result)
+          end
         end
       end
 

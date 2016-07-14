@@ -11,6 +11,7 @@ module BatchReactor
       @stopped_promise = Concurrent::IVar.new
       @max_batch_size = options.fetch(:max_batch_size) { 100 }
       @max_buffer_size = options[:max_buffer_size]
+      @buffer_overflow_handler = options.fetch(:buffer_overflow_handler) { :error }
       @no_work_backoff = options.fetch(:no_work_backoff) { 0.1 }
       super()
     end
@@ -44,7 +45,12 @@ module BatchReactor
       if @stopping_promise.fulfilled?
         promise.fail(StandardError.new('Reactor stopped!'))
       elsif @max_buffer_size && @back_buffer.size >= @max_buffer_size
-        promise.fail(StandardError.new('Buffer overflow!'))
+        if @buffer_overflow_handler == :wait
+          sleep 0.3 while @back_buffer.size >= @max_buffer_size
+          synchronize { @back_buffer << Work.new(block, promise) }
+        else
+          promise.fail(StandardError.new('Buffer overflow!'))
+        end
       else
         synchronize { @back_buffer << Work.new(block, promise) }
       end
