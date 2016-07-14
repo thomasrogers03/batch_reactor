@@ -161,6 +161,24 @@ module BatchReactor
         expect(batch.results).to eq([:item])
       end
 
+      context 'when a maximum buffer size is specified' do
+        let(:batch_promise) { Concurrent::IVar.new }
+        let(:batch_proc) do
+          ->(&block) do
+            block.call([])
+            ThomasUtils::Observation.new(ThomasUtils::Future::IMMEDIATE_EXECUTOR, batch_promise)
+          end
+        end
+        let(:options) { {max_buffer_size: 1} }
+
+        it 'should return a future resolving to a failure' do
+          subject.perform_within_batch { |batch| batch << :item }
+          future = subject.perform_within_batch { |batch| batch << :item }
+          batch_promise.set('OK')
+          expect { future.get }.to raise_error(StandardError, 'Buffer overflow!')
+        end
+      end
+
       context 'with multiple executions' do
         it 'should call the block for each execution' do
           ThomasUtils::Future.all([
