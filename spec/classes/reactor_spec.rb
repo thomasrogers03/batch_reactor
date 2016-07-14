@@ -195,6 +195,7 @@ module BatchReactor
 
           it 'should return a future resolving to the result of the block' do
             allow(subject).to receive(:sleep).with(0.3) do
+              allow(subject).to receive(:sleep)
               batch_promise.set('OK')
             end
             future = subject.perform_within_batch { |batch| batch << :item; :result }
