@@ -264,6 +264,38 @@ module BatchReactor
         end
       end
 
+      describe 'retry policies' do
+        let(:result) { Faker::Lorem.sentence }
+        let(:policy_name) { :always }
+        let(:policy_klass) { Retry::Policy::Always }
+        let(:options) { {retry_policy: policy_name} }
+
+        it 'should return a future resolving to the underlying result' do
+          future = subject.perform_within_batch { result }
+          expect(future.get).to eq(result)
+        end
+
+        context 'with an error' do
+          let(:batch_value) { nil }
+          let(:batch_error) { StandardError.new(Faker::Lorem.sentence) }
+
+          before do
+            allow_any_instance_of(policy_klass).to receive(:handle_future) do |policy, lock, future, batch, retry_buffer|
+              expect(lock).to eq(subject)
+              expect(future).to be_a_kind_of(ThomasUtils::Observation)
+              batch.each { |work| work.promise.set(work.result) }
+              expect(retry_buffer).to be_a_kind_of(Array)
+              ThomasUtils::Future.error(Retry::Policy::ERROR)
+            end
+          end
+
+          it 'should let the retry policy handle the failure' do
+            future = subject.perform_within_batch { result }
+            expect(future.get).to eq(result)
+          end
+        end
+      end
+
       context 'with many items enqueued' do
         it 'should distribute no more than 100 items across multiple batches' do
           futures = 1000.times.map { subject.perform_within_batch { |batch| batch << :item } }

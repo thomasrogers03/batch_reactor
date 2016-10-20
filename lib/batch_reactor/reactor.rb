@@ -13,6 +13,9 @@ module BatchReactor
       @max_buffer_size = options[:max_buffer_size]
       @buffer_overflow_handler = options.fetch(:buffer_overflow_handler) { :error }
       @no_work_backoff = options.fetch(:no_work_backoff) { 0.1 }
+      @retry_policy = if options[:retry_policy] == :always
+                        Retry::Policy::Always.new
+                      end
       super()
     end
 
@@ -85,10 +88,15 @@ module BatchReactor
     def process_batch
       buffer = @front_buffer.slice!(0...@max_batch_size)
       batch_future = create_batch(buffer)
-      batch_future.on_complete do |_, error|
-        error ? handle_failure(buffer, error) : handle_success(buffer)
+      if @retry_policy
+        @retry_policy.handle_future(self, batch_future, buffer, @front_buffer).on_success do |_|
+          handle_success(buffer)
+        end
+      else
+        batch_future.on_complete do |_, error|
+          error ? handle_failure(buffer, error) : handle_success(buffer)
+        end
       end
-      batch_future
     end
 
     def create_batch(buffer)
