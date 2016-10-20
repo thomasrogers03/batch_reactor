@@ -9,7 +9,7 @@ GIT
 PATH
   remote: .
   specs:
-    batch_reactor (0.1.1)
+    batch_reactor (0.1.2)
       thomas_utils (~> 0.2.4)
 
 GEM
