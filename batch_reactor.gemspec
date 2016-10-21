@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'batch_reactor'
-  s.version = '0.1.2'
+  s.version = '0.1.3'
   s.license = 'Apache License 2.0'
   s.summary = 'A reactor pattern batching system for Ruby'
   s.description = %q{A reactor pattern batching system for Ruby.

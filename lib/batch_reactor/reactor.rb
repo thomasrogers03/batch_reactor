@@ -64,10 +64,10 @@ module BatchReactor
 
     def_delegator :@front_buffer, :empty?, :needs_work?
 
-    Work = Struct.new(:proc, :promise, :result)
+    Work = Struct.new(:proc, :promise, :result, :retry_count)
 
     def append_to_buffer(block, promise)
-      synchronize { @back_buffer << Work.new(block, promise) }
+      synchronize { @back_buffer << Work.new(block, promise, nil, 0) }
     end
 
     def swap_buffers

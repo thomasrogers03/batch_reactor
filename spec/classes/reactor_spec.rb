@@ -283,7 +283,10 @@ module BatchReactor
             allow_any_instance_of(policy_klass).to receive(:handle_future) do |policy, lock, future, batch, retry_buffer|
               expect(lock).to eq(subject)
               expect(future).to be_a_kind_of(ThomasUtils::Observation)
-              batch.each { |work| work.promise.set(work.result) }
+              batch.each do |work|
+                work.retry_count += 1
+                work.promise.set(work.result)
+              end
               expect(retry_buffer).to be_a_kind_of(Array)
               ThomasUtils::Future.error(Retry::Policy::ERROR)
             end
