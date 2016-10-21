@@ -16,6 +16,10 @@ module BatchReactor
         end
       end
 
+      def should_throttle?
+        false
+      end
+
       private
 
       def work_by_status(batch, error)

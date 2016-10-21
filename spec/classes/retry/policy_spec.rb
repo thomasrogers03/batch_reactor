@@ -142,6 +142,10 @@ module BatchReactor
         end
       end
 
+      describe '#should_throttle?' do
+        its(:should_throttle?) { is_expected.to eq(false) }
+      end
+
     end
   end
 end
