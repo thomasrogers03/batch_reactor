@@ -8,7 +8,7 @@ group :development do
 end
 
 group :test do
-  gem 'rspec', '~> 3.1.0', require: false
+  gem 'rspec', '~> 3.5.0', require: false
   gem 'rspec-its'
   gem 'guard-rspec'
   gem 'guard-bundler'
