@@ -7,6 +7,8 @@ module BatchReactor
 
         it { is_expected.to be_a_kind_of(Policy) }
 
+        it { is_expected.to respond_to(:count_retry).with(1).arguments }
+
         it { is_expected.to respond_to(:should_retry?).with(2).arguments }
 
         it 'should always retry' do

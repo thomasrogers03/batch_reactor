@@ -11,6 +11,7 @@ module BatchReactor
           work_by_status = work_by_status(batch, error)
           fail_failures!(error, work_by_status[false])
           perform_retries!(lock, retry_buffer, work_by_status[true])
+          count_retry(error)
           ThomasUtils::Future.error(ERROR)
         end
       end

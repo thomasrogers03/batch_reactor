@@ -7,6 +7,10 @@ module BatchReactor
         def should_retry?(_, _)
           true
         end
+
+        def count_retry(_)
+
+        end
       end
     end
   end

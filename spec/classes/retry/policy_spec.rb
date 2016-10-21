@@ -12,6 +12,10 @@ module BatchReactor
             !(bad_error && error.is_a?(bad_error)) &&
                 (max_retries == -1 || work.retry_count < max_retries)
           end
+
+          def count_retry(error)
+
+          end
         end
       end
       let(:work_klass) do
@@ -23,8 +27,9 @@ module BatchReactor
       end
       let(:bad_error) { nil }
       let(:max_retries) { -1 }
+      let(:policy) { policy_klass.new(max_retries, bad_error) }
 
-      subject { policy_klass.new(max_retries, bad_error) }
+      subject { policy }
 
       describe '#handle_future' do
         let(:lock) { Mutex.new }
@@ -41,6 +46,11 @@ module BatchReactor
         it 'should do nothing with the buffer' do
           subject.handle_future(lock, future, batch, retry_buffer)
           expect(retry_buffer).to be_empty
+        end
+
+        it 'should not count a retry' do
+          expect(policy).not_to receive(:count_retry)
+          subject.handle_future(lock, future, batch, retry_buffer)
         end
 
         context 'when the future returns an error' do
@@ -60,6 +70,11 @@ module BatchReactor
           it 'should increment the retry count' do
             subject.handle_future(lock, future, batch, retry_buffer)
             expect(work.retry_count).to eq(1)
+          end
+
+          it 'should count a retry' do
+            expect(policy).to receive(:count_retry).with(error)
+            subject.handle_future(lock, future, batch, retry_buffer)
           end
 
           context 'with multiple items' do
