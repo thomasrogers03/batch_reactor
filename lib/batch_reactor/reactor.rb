@@ -49,7 +49,7 @@ module BatchReactor
         promise.fail(StandardError.new('Reactor stopped!'))
       elsif throttled?
         if @buffer_overflow_handler == :wait
-          sleep 0.3 while still_throttled?
+          sleep 0.3 while throttled?
           append_to_buffer(block, promise)
         else
           promise.fail(StandardError.new('Buffer overflow!'))
@@ -67,11 +67,15 @@ module BatchReactor
     Work = Struct.new(:proc, :promise, :result, :retry_count)
 
     def throttled?
-      @max_buffer_size && still_throttled?
+      policy_throttled? || buffer_throttled?
     end
 
-    def still_throttled?
-      @back_buffer.size >= @max_buffer_size
+    def buffer_throttled?
+      @max_buffer_size && @back_buffer.size >= @max_buffer_size
+    end
+
+    def policy_throttled?
+      @retry_policy && @retry_policy.should_throttle?
     end
 
     def append_to_buffer(block, promise)

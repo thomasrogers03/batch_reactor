@@ -17,22 +17,30 @@ module BatchReactor
         batch_error ? ThomasUtils::Future.error(batch_error) : ThomasUtils::Future.value(batch_value)
       end
     end
+    let(:sleepiness) { [] }
     let(:options) { {} }
 
     subject { Reactor.new(options, &batch_proc) }
 
+    before do
+      allow(subject).to receive(:sleep) do |seconds|
+        sleepiness << seconds
+        seconds
+      end
+    end
+
     describe 'processing thread' do
       it 'should sleep for 100 ms when there is no work' do
-        expect(subject).to receive(:sleep).with(0.1).at_least :once
         subject.start.get.stop.get
+        expect(sleepiness).to include(0.1)
       end
 
       context 'with different options' do
         let(:options) { {no_work_backoff: 1} }
 
         it 'should allow the sleep time to be overridden' do
-          expect(subject).to receive(:sleep).with(1).at_least :once
           subject.start.get.stop.get
+          expect(sleepiness).to include(1)
         end
       end
     end
@@ -161,7 +169,7 @@ module BatchReactor
         expect(batch.results).to eq([:item])
       end
 
-      context 'when a maximum buffer size is specified' do
+      shared_examples_for 'throttling the reactor' do
         let(:batch_promise) { Concurrent::IVar.new }
         let(:batch_proc) do
           ->(&block) do
@@ -169,7 +177,6 @@ module BatchReactor
             ThomasUtils::Observation.new(ThomasUtils::Future::IMMEDIATE_EXECUTOR, batch_promise)
           end
         end
-        let(:throttle_options) { {max_buffer_size: 1} }
         let(:options) { throttle_options }
 
         before do
@@ -186,23 +193,22 @@ module BatchReactor
           let(:options) { throttle_options.merge(buffer_overflow_handler: :wait) }
 
           it 'should wait until the buffer is ready again' do
-            expect(subject).to receive(:sleep).with(0.3) do
-              allow(subject).to receive(:sleep)
-              batch_promise.set('OK')
-              nil
-            end
+            batch_promise.set('OK')
             subject.perform_within_batch { |batch| batch << :item }.get
+            expect(sleepiness).to include(0.3)
           end
 
           it 'should return a future resolving to the result of the block' do
-            allow(subject).to receive(:sleep).with(0.3) do
-              allow(subject).to receive(:sleep)
-              batch_promise.set('OK')
-            end
+            batch_promise.set('OK')
             future = subject.perform_within_batch { |batch| batch << :item; :result }
             expect(future.get).to eq(:result)
           end
         end
+      end
+
+      context 'when a maximum buffer size is specified' do
+        let(:throttle_options) { {max_buffer_size: 1} }
+        it_behaves_like 'throttling the reactor'
       end
 
       context 'with multiple executions' do
@@ -297,6 +303,14 @@ module BatchReactor
             future = subject.perform_within_batch { result }
             expect(future.get).to eq(result)
           end
+        end
+
+        context 'when the policy throttles the reactor' do
+          let(:throttle_options) { {retry_policy: policy_name} }
+
+          before { allow_any_instance_of(policy_klass).to receive(:should_throttle?).and_return(true, true, true, false) }
+
+          it_behaves_like 'throttling the reactor'
         end
       end
 
