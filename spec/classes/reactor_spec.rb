@@ -169,7 +169,8 @@ module BatchReactor
             ThomasUtils::Observation.new(ThomasUtils::Future::IMMEDIATE_EXECUTOR, batch_promise)
           end
         end
-        let(:options) { {max_buffer_size: 1} }
+        let(:throttle_options) { {max_buffer_size: 1} }
+        let(:options) { throttle_options }
 
         before do
           subject.perform_within_batch { |batch| batch << :item }
@@ -182,7 +183,7 @@ module BatchReactor
         end
 
         context 'when specified to wait, instead of erroring out' do
-          let(:options) { {max_buffer_size: 1, buffer_overflow_handler: :wait} }
+          let(:options) { throttle_options.merge(buffer_overflow_handler: :wait) }
 
           it 'should wait until the buffer is ready again' do
             expect(subject).to receive(:sleep).with(0.3) do
