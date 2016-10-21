@@ -47,9 +47,9 @@ module BatchReactor
       promise = Concurrent::IVar.new
       if @stopping_promise.fulfilled?
         promise.fail(StandardError.new('Reactor stopped!'))
-      elsif @max_buffer_size && @back_buffer.size >= @max_buffer_size
+      elsif throttled?
         if @buffer_overflow_handler == :wait
-          sleep 0.3 while @back_buffer.size >= @max_buffer_size
+          sleep 0.3 while still_throttled?
           append_to_buffer(block, promise)
         else
           promise.fail(StandardError.new('Buffer overflow!'))
@@ -65,6 +65,14 @@ module BatchReactor
     def_delegator :@front_buffer, :empty?, :needs_work?
 
     Work = Struct.new(:proc, :promise, :result, :retry_count)
+
+    def throttled?
+      @max_buffer_size && still_throttled?
+    end
+
+    def still_throttled?
+      @back_buffer.size >= @max_buffer_size
+    end
 
     def append_to_buffer(block, promise)
       synchronize { @back_buffer << Work.new(block, promise, nil, 0) }
